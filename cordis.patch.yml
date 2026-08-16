@@ -1,0 +1,18 @@
+# dsh-my-plugins bundle patch
+#
+# This file is the `dsh.bundle.patch` layer of the published npm package: when
+# the plugin is installed through the official CLI —
+#
+#   dsh plugin --profile web add dsh-my-plugins@link:<此目录>
+#
+# — the command reconciles `dsh.profile.bundles` against installed packages
+# and, seeing this declaration, appends `dsh-my-plugins` to the bundle
+# stack. The profile boot then merges THIS patch (a single `insert` of the
+# plugin row) like any bundle layer. One command installs and mounts.
+#
+# The row mounts the package's host half (lib/index.js); the browser half
+# (lib/client.js) is discovered from the same package's `dsh.client`
+# declaration by the client-modules scan and composed into the page boot.
+- insert:
+    - id: my-plugins
+      name: 'dsh-my-plugins'
