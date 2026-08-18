@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { buildCards, compareVersions, githubRepoOf, packageRootOf, readManagedStates, scanPatchInsertIds, sourceOf, writeManagedStates } from "../lib/index.js";
+import { assertUpdateApplied, buildCards, compareVersions, githubRepoOf, localSpecPath, missingLocalDependency, packageRootOf, readManagedStates, scanPatchInsertIds, sourceOf, updateArgsFor, writeManagedStates } from "../lib/index.js";
 
 function makePackage(dir, name, version, description = "") {
 	mkdirSync(dir, { recursive: true });
@@ -32,6 +32,31 @@ test("GitHub upstream metadata and version comparison are parsed safely", () => 
 	assert.equal(compareVersions("v1.2.0", "1.2.0"), 0);
 	assert.equal(compareVersions("1.2.0-beta.1", "1.2.0"), -1);
 	assert.equal(compareVersions("not-a-version", "1.2.0"), null);
+});
+
+test("Registry updates pin the target version and reject false-success results", () => {
+	const card = { packageName: "dsh-example", version: "0.12.3", source: { kind: "registry" } };
+	const check = { latestVersion: "0.13.1" };
+	assert.deepEqual(updateArgsFor(card, check), ["add", "dsh-example@0.13.1"]);
+	assert.throws(() => assertUpdateApplied(card, { version: "0.12.3" }, check), /未达到目标/);
+	assert.doesNotThrow(() => assertUpdateApplied(card, { version: "0.13.1" }, check));
+});
+
+test("dependency health check identifies missing local tarballs before pnpm runs", () => {
+	const profile = mkdtempSync(join(tmpdir(), "dsh-profile-"));
+	mkdirSync(join(profile, ".dsh-plugin-cache"), { recursive: true });
+	writeFileSync(join(profile, ".dsh-plugin-cache", "present.tgz"), "fixture", "utf8");
+	const dependencies = {
+		"present-plugin": "file:.dsh-plugin-cache/present.tgz",
+		"missing-plugin": "file:.dsh-plugin-cache/missing.tgz",
+		"registry-plugin": "^1.0.0"
+	};
+	assert.equal(localSpecPath("file:.dsh-plugin-cache/present.tgz", profile), join(profile, ".dsh-plugin-cache", "present.tgz"));
+	assert.deepEqual(missingLocalDependency(profile, dependencies), {
+		packageName: "missing-plugin",
+		spec: "file:.dsh-plugin-cache/missing.tgz",
+		path: join(profile, ".dsh-plugin-cache", "missing.tgz")
+	});
 });
 
 test("managed block changes preserve surrounding user patch text", () => {
