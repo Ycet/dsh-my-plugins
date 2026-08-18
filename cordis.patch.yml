@@ -3,7 +3,7 @@
 # This file is the `dsh.bundle.patch` layer of the published npm package: when
 # the plugin is installed through the official CLI —
 #
-#   dsh plugin --profile web add dsh-my-plugins@link:<此目录>
+#   dsh plugin --profile web add dsh-my-plugins@file:<绝对路径>
 #
 # — the command reconciles `dsh.profile.bundles` against installed packages
 # and, seeing this declaration, appends `dsh-my-plugins` to the bundle
