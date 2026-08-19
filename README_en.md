@@ -31,7 +31,9 @@ A DeepSeek Harness (DSH) plugin management panel: adds a "My Plugins" tab to the
 
 ## 📸 Preview
 
-<!-- Screenshot to be added: the "My Plugins" page (Settings → Plugins) with plugin cards, search and enable/update/remove actions -->
+The "My Plugins" page (Settings → Plugins): plugin cards with version, install source, configuration and Cordis status; the my-plugins card is expanded showing enable/update/remove actions.
+
+![Screenshot of the "My Plugins" page](assets/images/dsh-my-plugins-setting-UI.png)
 
 ---
 

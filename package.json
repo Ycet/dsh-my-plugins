@@ -1,6 +1,6 @@
 {
   "name": "dsh-my-plugins",
-  "version": "1.3.7",
+  "version": "1.3.8",
   "description": "DSH 设置-插件页新增「我的插件」标签：展示版本、启停、GitHub 更新检查与二次确认移除。",
   "type": "module",
   "main": "lib/index.js",
