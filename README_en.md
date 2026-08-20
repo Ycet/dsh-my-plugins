@@ -63,10 +63,10 @@ The "My Plugins" page (Settings → Plugins): plugin cards with version, install
 
 ```sh
 # Option 1: install from GitHub
-dsh plugin --profile <profile> add github:Ycet/dsh-my-plugins
+dsh plugin --profile web add github:Ycet/dsh-my-plugins
 
 # Option 2: install from a local source directory (development)
-dsh plugin --profile <profile> add dsh-my-plugins@file:<absolute-path-to-plugin>
+dsh plugin --profile web add dsh-my-plugins@file:<absolute-path-to-plugin>
 ```
 
 The package declares a `dsh.bundle` patch layer; `dsh plugin` merges the loader entry into the profile's bundle layer automatically — no manual editing of `cordis.patch.yml` required.
