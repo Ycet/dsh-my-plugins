@@ -63,10 +63,10 @@ DeepSeek Harness（DSH）插件管理面板：在「设置 → 插件」页新�
 
 ```sh
 # 方式一：从 GitHub 安装
-dsh plugin --profile <profile> add github:Ycet/dsh-my-plugins
+dsh plugin --profile web add github:Ycet/dsh-my-plugins
 
 # 方式二：从本地源码安装（开发）
-dsh plugin --profile <profile> add dsh-my-plugins@file:<absolute-path-to-plugin>
+dsh plugin --profile web add dsh-my-plugins@file:<absolute-path-to-plugin>
 ```
 
 包声明了 `dsh.bundle` 补丁层，`dsh plugin` 会自动把加载项合入 profile 的 bundle 层，无需手动编辑 `cordis.patch.yml`。
