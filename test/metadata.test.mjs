@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { assertUpdateApplied, buildCards, compareVersions, githubRepoOf, localSpecPath, missingLocalDependency, packageRootOf, readManagedStates, scanPatchInsertIds, sourceOf, updateArgsFor, writeManagedStates } from "../lib/index.js";
+import { assertUpdateApplied, buildCards, compareVersions, existingDependency, githubRepoOf, localSpecPath, missingLocalDependency, packageRootOf, readManagedStates, resolveInstallSpec, scanPatchInsertIds, sourceOf, splitNpmInput, summarizeCliError, updateArgsFor, writeManagedStates } from "../lib/index.js";
 
 function makePackage(dir, name, version, description = "") {
 	mkdirSync(dir, { recursive: true });
@@ -71,6 +71,70 @@ test("managed block changes preserve surrounding user patch text", () => {
 test("scanPatchInsertIds finds top-level insert rows", () => {
 	const text = "- insert:\n    - id: demo\n      name: dsh-demo\n    - id: second\n      name: dsh-second\n";
 	assert.deepEqual(scanPatchInsertIds(text), ["demo", "second"]);
+});
+
+test("github install specs validate owner/repo with optional ref", () => {
+	assert.deepEqual(resolveInstallSpec("github", "Ycet/dsh-my-plugins"), { ok: true, spec: "github:Ycet/dsh-my-plugins", packageName: null });
+	assert.deepEqual(resolveInstallSpec("github", "Ycet/dsh-my-plugins#main"), { ok: true, spec: "github:Ycet/dsh-my-plugins#main", packageName: null });
+	assert.deepEqual(resolveInstallSpec("github", "owner/plugin#feat/bar"), { ok: true, spec: "github:owner/plugin#feat/bar", packageName: null });
+	assert.equal(resolveInstallSpec("github", "owner").ok, false, "缺少斜杠应拒绝");
+	assert.equal(resolveInstallSpec("github", "owner/repo#bad ref").ok, false, "含空白的 ref 应拒绝");
+	assert.equal(resolveInstallSpec("github", "owner/repo#").ok, false, "空 ref 应拒绝");
+	assert.equal(resolveInstallSpec("github", "").ok, false, "空输入应拒绝");
+});
+
+test("link install specs read the package name from source package.json", () => {
+	const dir = mkdtempSync(join(tmpdir(), "dsh-link-"));
+	makePackage(dir, "dsh-example", "1.0.0");
+	assert.deepEqual(resolveInstallSpec("link", dir), { ok: true, spec: `dsh-example@link:${dir}`, packageName: "dsh-example" });
+	assert.equal(resolveInstallSpec("link", join(dir, "missing")).ok, false, "不存在的路径应拒绝");
+	assert.equal(resolveInstallSpec("link", "relative/path").ok, false, "相对路径应拒绝");
+	const empty = mkdtempSync(join(tmpdir(), "dsh-link-empty-"));
+	assert.equal(resolveInstallSpec("link", empty).ok, false, "缺少 package.json 应拒绝");
+	const badName = mkdtempSync(join(tmpdir(), "dsh-link-name-"));
+	makePackage(badName, "Bad-Name", "1.0.0");
+	assert.equal(resolveInstallSpec("link", badName).ok, false, "非法包名应拒绝");
+});
+
+test("file install specs accept directories, tarballs and reject the rest", () => {
+	const dir = mkdtempSync(join(tmpdir(), "dsh-file-"));
+	assert.deepEqual(resolveInstallSpec("file", dir), { ok: true, spec: `file:${dir}`, packageName: null });
+	const tarball = join(dir, "example-1.0.0.tgz");
+	writeFileSync(tarball, "fixture", "utf8");
+	assert.deepEqual(resolveInstallSpec("file", tarball), { ok: true, spec: `file:${tarball}`, packageName: null });
+	assert.equal(resolveInstallSpec("file", join(dir, "missing.tgz")).ok, false, "不存在的路径应拒绝");
+	assert.equal(resolveInstallSpec("file", "relative/path").ok, false, "相对路径应拒绝");
+});
+
+test("npm install specs parse names with optional versions and scopes", () => {
+	assert.deepEqual(resolveInstallSpec("npm", "dsh-example"), { ok: true, spec: "dsh-example", packageName: "dsh-example" });
+	assert.deepEqual(resolveInstallSpec("npm", "dsh-example@1.2.3"), { ok: true, spec: "dsh-example@1.2.3", packageName: "dsh-example" });
+	assert.deepEqual(resolveInstallSpec("npm", "dsh-example@next"), { ok: true, spec: "dsh-example@next", packageName: "dsh-example" });
+	assert.deepEqual(resolveInstallSpec("npm", "@scope/plugin"), { ok: true, spec: "@scope/plugin", packageName: "@scope/plugin" });
+	assert.deepEqual(resolveInstallSpec("npm", "@scope/plugin@0.1.0"), { ok: true, spec: "@scope/plugin@0.1.0", packageName: "@scope/plugin" });
+	assert.equal(resolveInstallSpec("npm", "Bad-Name").ok, false, "大写包名应拒绝");
+	assert.equal(resolveInstallSpec("npm", "dsh-example@").ok, false, "空版本应拒绝");
+	assert.equal(resolveInstallSpec("npm", "dsh-example@1 2").ok, false, "含空白版本应拒绝");
+	assert.equal(resolveInstallSpec("npm", "@scope").ok, false, "残缺 scoped 包名应拒绝");
+	assert.equal(splitNpmInput("dsh-example@1.0.0").name, "dsh-example");
+	assert.equal(splitNpmInput("@scope/plugin@1.0.0").version, "1.0.0");
+	assert.equal(splitNpmInput("@scope/plugin").name, "@scope/plugin");
+});
+
+test("existingDependency finds a duplicate spec only when installed", () => {
+	assert.equal(existingDependency({ "dsh-example": "github:owner/repo" }, "dsh-example"), "github:owner/repo");
+	assert.equal(existingDependency({ "dsh-example": "^1.0.0" }, "other"), null);
+	assert.equal(existingDependency({}, "dsh-example"), null);
+	assert.equal(existingDependency({ "dsh-example": "" }, "dsh-example"), null);
+});
+
+test("summarizeCliError strips ANSI and trims pnpm noise", () => {
+	const output = "\u001b[31mERR_PNPM_ADD_PACKAGE_FAILED\u001b[39m\r\nProgress: resolved 10, reused 5\r\n  error output line\r\n";
+	const summary = summarizeCliError(output);
+	assert.ok(!summary.includes("Progress:"), "进度行应被剔除");
+	assert.ok(!summary.includes("\u001b"), "ANSI 序列应被剥离");
+	assert.ok(summary.includes("ERR_PNPM_ADD_PACKAGE_FAILED"));
+	assert.equal(summarizeCliError(""), "安装命令执行失败");
 });
 
 test("buildCards excludes in-box/subpath/include entries and retains local installed package", async () => {

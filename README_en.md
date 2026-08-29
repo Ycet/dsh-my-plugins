@@ -5,10 +5,10 @@
 
 <div align="center">
 
-A DeepSeek Harness (DSH) plugin management panel: adds a "My Plugins" tab to the Settings → Plugins page for viewing versions, enabling/disabling, checking GitHub updates and removing plugins with confirmation.
+A DeepSeek Harness (DSH) plugin management panel: adds a "My Plugins" tab to the Settings → Plugins page for one-click installs (GitHub / link / file / npm), viewing versions, enabling/disabling, checking GitHub updates and removing plugins with confirmation.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.3.7-blue.svg?style=for-the-badge)](package.json)
+[![Version](https://img.shields.io/badge/version-1.4.0-blue.svg?style=for-the-badge)](package.json)
 [![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.6%2B-purple.svg?style=for-the-badge)](https://github.com/deepseek-ai/deepseek-harness)
 
 </div>
@@ -42,6 +42,7 @@ The "My Plugins" page (Settings → Plugins): plugin cards with version, install
 | Feature | Description |
 |---------|-------------|
 | **"My Plugins" tab** | Adds a dedicated tab (`mine`) to the Settings → Plugins page listing all user-installed plugins |
+| **One-click install** | An "Install plugin" button next to the search box opens a dialog with four methods: GitHub remote install, local link install, local file install and npm install (since v1.4.0); installing a package that is already present asks for confirmation before switching the install source |
 | **Plugin cards** | One card per plugin: name, version, description and install source (GitHub / local / registry / manual patch) |
 | **Status display** | Configuration status (enabled/disabled) and Cordis mount phase (not mounted / waiting for dependencies / loading / mounted / mount failed / unloading) |
 | **Search** | Real-time filtering by plugin name or description |
@@ -85,13 +86,14 @@ The package declares a `dsh.bundle` patch layer; `dsh plugin` merges the loader 
 ## 📖 Usage
 
 1. Open "Settings → Plugins → My Plugins";
-2. **Search**: filter plugins by name or description in the input at the top;
-3. **Enable/disable**: click "Disable plugin" / "Enable plugin" on a card, then restart `dsh web` as prompted;
-4. **Update** (GitHub source): click "Check update" to see whether the upstream has a newer version; when available, click "Update now", then restart `dsh web` to apply;
-5. **Remove**: click "Remove plugin", confirm in the dialog, and restart `dsh web` to finish the uninstall.
+2. **Install**: click "Install plugin" next to the search box, pick a method in the dialog, enter the address/path/package name and click "Install". GitHub takes `owner/repo` (optional `#branch or tag`), link/file take an absolute local path (link reads the package name from the source `package.json` automatically), npm takes a package name (optional `@version`). Installing a plugin that already exists prompts for confirmation before switching sources. Restart `dsh web` after the install completes;
+3. **Search**: filter plugins by name or description in the input at the top;
+4. **Enable/disable**: click "Disable plugin" / "Enable plugin" on a card, then restart `dsh web` as prompted;
+5. **Update** (GitHub source): click "Check update" to see whether the upstream has a newer version; when available, click "Update now", then restart `dsh web` to apply;
+6. **Remove**: click "Remove plugin", confirm in the dialog, and restart `dsh web` to finish the uninstall.
 
 > [!NOTE]
-> Updates and removals are executed through the official `dsh plugin` CLI; completion is shown in a toast at the bottom right of the page, after which you need to restart `dsh web` in the terminal for the change to fully take effect.
+> Installs, updates and removals are executed through the official `dsh plugin` CLI; completion is shown in a toast at the bottom right of the page, after which you need to restart `dsh web` in the terminal for the change to fully take effect.
 
 ---
 
@@ -102,12 +104,16 @@ A dual-half plugin (host + browser). The host registers a `/my-plugins/api` pref
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `POST` | `/my-plugins/api/list` | Return all plugin cards (version, source, config status, Cordis mount phase, available actions) |
+| `POST` | `/my-plugins/api/install` | Install a plugin (`kind` is github/link/file/npm, `input` is the address/path/package name; when a package with the same name is already installed it first returns `needConfirm`, then executes after confirmation) |
 | `POST` | `/my-plugins/api/toggle` | Disable/enable a plugin (writes the managed state block in the profile's `cordis.patch.yml`) |
 | `POST` | `/my-plugins/api/check-update` | Check GitHub upstream releases and compare versions |
 | `POST` | `/my-plugins/api/update` | Update a GitHub-sourced plugin via `dsh plugin` |
 | `POST` | `/my-plugins/api/remove` | Remove a plugin via `dsh plugin remove` and clean up managed state |
 
 Key mechanisms:
+
+- **Install input validation**: GitHub `owner/repo` (optional `#ref`), npm package names/versions and absolute local paths are strictly validated on the host before assembling the `dsh plugin ... add <spec>` arguments (link reads the package `name` from the source directory's `package.json` to build `<name>@link:<path>`);
+- **Same-name install confirmation**: for npm/link the package name can be resolved, and when the profile already contains a package with the same name, the dialog asks for confirmation before overwriting the install (which also enables switching sources, e.g. `file:` → `github:`);
 
 - **Managed state block**: enable/disable overrides are written to the profile's `cordis.patch.yml` inside the `# >>> dsh-my-plugins managed states >>>` markers, maintained by the host so they never mix with manual patches;
 - **Source detection**: package metadata decides between GitHub (`git+https://github.com/…` etc.), local (`file:` paths), registry (npm version specs) and manual patch, which determines whether automatic updates are available;
@@ -122,7 +128,7 @@ Key mechanisms:
 npm test   # node --test test/*.test.mjs
 ```
 
-`test/metadata.test.mjs` covers the pure-function contracts: package-root parsing (`packageRootOf`), source detection (`sourceOf`), GitHub metadata and version comparison (`githubRepoOf` / `compareVersions`), patch insert-block scanning (`scanPatchInsertIds`), managed-state read/write (`readManagedStates` / `writeManagedStates`), update-argument construction (`updateArgsFor`) and stale-local-dependency detection (`missingLocalDependency`).
+`test/metadata.test.mjs` covers the pure-function contracts: package-root parsing (`packageRootOf`), source detection (`sourceOf`), GitHub metadata and version comparison (`githubRepoOf` / `compareVersions`), patch insert-block scanning (`scanPatchInsertIds`), managed-state read/write (`readManagedStates` / `writeManagedStates`), update-argument construction (`updateArgsFor`) and stale-local-dependency detection (`missingLocalDependency`); since v1.4.0 it also covers install input validation (`resolveInstallSpec` / `splitNpmInput`), same-name dependency detection (`existingDependency`) and CLI error summarisation (`summarizeCliError`).
 
 ---
 
@@ -130,7 +136,8 @@ npm test   # node --test test/*.test.mjs
 
 - **Automatic updates are GitHub-source only**: registry, local and manual-patch sources cannot be auto-updated; the card shows the corresponding reason (`upstreamAhead` means a newer GitHub Release exists, but the current npm install source has no installable update yet).
 - **Pinned references cannot be tracked**: plugins pinned to a tag or commit cannot track branch updates; when the installed Git commit cannot be confirmed, no update is judged safe.
-- **Operations require a restart**: enable/disable, update and remove fully apply only after restarting `dsh web` (bundle layers are not hot-reloaded).
+- **Operations require a restart**: installs, enable/disable, update and remove fully apply only after restarting `dsh web` (bundle layers are not hot-reloaded).
+- **Same-name install overwrites after confirmation**: npm/link installs resolve an already-installed package name and ask for confirmation; github/file installs cannot know the package name in advance, so pnpm handles a repeated install directly.
 - **Removal is an uninstall**: removing deletes the plugin dependency from the current profile — an irreversible operation, use with care.
 
 ---
