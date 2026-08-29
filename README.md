@@ -45,7 +45,7 @@ DeepSeek Harness（DSH）插件管理面板：在「设置 → 插件」页新�
 |------|------|
 | **「我的插件」标签页** | 在「设置 → 插件」页新增独立标签（`mine`），集中展示用户安装的插件 |
 | **一键安装插件** | 搜索框右侧「安装插件」弹窗，支持 GitHub 远程安装、本地 link 安装、本地 file 安装与 npm 安装四种方式（v1.4.0 起）；已安装同名插件时二次确认后切换安装来源 |
-| **插件卡片** | 每个插件一张卡片：名称、版本、介绍、安装来源（GitHub / 本地 / Registry / 手工 patch） |
+| **插件卡片** | 每个插件一张卡片：名称、版本、介绍、安装来源（GitHub / 本地 / Registry / 手工 patch）；GitHub 安装来源与 Registry 卡片的 GitHub 上游文字为可点击链接，点击在新标签页打开对应仓库（v1.5.0 起） |
 | **状态展示** | 配置状态（已启用/已停用）与 Cordis 挂载阶段（未挂载 / 等待依赖 / 加载中 / 已挂载 / 挂载失败 / 卸载中） |
 | **搜索** | 按插件名称或介绍实时过滤 |
 | **启停管理** | 一键禁用 / 启用插件，状态写入 profile 托管的 patch 覆盖块，重启 `dsh web` 后完全生效 |
@@ -118,7 +118,7 @@ dsh plugin --profile web add dsh-my-plugins@file:<absolute-path-to-plugin>
 - **同名安装确认**：npm / link 方式可解析出包名，若 profile 中已安装同名插件，先返回确认提示，用户确认后才执行覆盖安装（支持切换安装来源，如 `file:` → `github:`）；
 
 - **托管状态块**：启停覆盖写入 profile 的 `cordis.patch.yml`，用 `# >>> dsh-my-plugins managed states >>>` 标记边界，由宿主维护，避免与手工补丁混淆；
-- **来源判定**：根据包元数据识别 GitHub（`git+https://github.com/…` 等）、本地（`file:` 路径）、Registry（npm 版本规格）与手工 patch 四种来源，并据此决定是否支持自动更新；
+- **来源判定**：根据包元数据识别 GitHub（`git+https://github.com/…` 等）、本地（`file:` 路径）、Registry（npm 版本规格）与手工 patch 四种来源，并据此决定是否支持自动更新；GitHub 来源及 Registry 上游的 `owner/repo` 经客户端同规则校验后渲染为指向 `https://github.com/<owner>/<repo>` 的链接（新标签页打开），非法元数据回退纯文本（v1.5.0 起）；
 - **更新安全性**：`check-update` 做版本语义比较并确认已安装 commit；`update` 前校验 profile 内被引用的本地安装包是否失效（v1.3.6 起），存在失效依赖时拒绝更新并提示先修复安装来源；
 - **移除清理**：`remove` 成功后同步清理该插件入口对应的托管禁用状态，保持 profile 补丁文件整洁。
 

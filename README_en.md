@@ -45,7 +45,7 @@ The "My Plugins" page (Settings → Plugins, v1.4.0): an "Install plugin" button
 |---------|-------------|
 | **"My Plugins" tab** | Adds a dedicated tab (`mine`) to the Settings → Plugins page listing all user-installed plugins |
 | **One-click install** | An "Install plugin" button next to the search box opens a dialog with four methods: GitHub remote install, local link install, local file install and npm install (since v1.4.0); installing a package that is already present asks for confirmation before switching the install source |
-| **Plugin cards** | One card per plugin: name, version, description and install source (GitHub / local / registry / manual patch) |
+| **Plugin cards** | One card per plugin: name, version, description and install source (GitHub / local / registry / manual patch); GitHub install sources and the GitHub upstream on registry cards render as clickable links that open the repository in a new tab (since v1.5.0) |
 | **Status display** | Configuration status (enabled/disabled) and Cordis mount phase (not mounted / waiting for dependencies / loading / mounted / mount failed / unloading) |
 | **Search** | Real-time filtering by plugin name or description |
 | **Enable/disable** | One-click disable/enable; state is written to a managed patch override block in the profile and fully applies after restarting `dsh web` |
@@ -118,7 +118,7 @@ Key mechanisms:
 - **Same-name install confirmation**: for npm/link the package name can be resolved, and when the profile already contains a package with the same name, the dialog asks for confirmation before overwriting the install (which also enables switching sources, e.g. `file:` → `github:`);
 
 - **Managed state block**: enable/disable overrides are written to the profile's `cordis.patch.yml` inside the `# >>> dsh-my-plugins managed states >>>` markers, maintained by the host so they never mix with manual patches;
-- **Source detection**: package metadata decides between GitHub (`git+https://github.com/…` etc.), local (`file:` paths), registry (npm version specs) and manual patch, which determines whether automatic updates are available;
+- **Source detection**: package metadata decides between GitHub (`git+https://github.com/…` etc.), local (`file:` paths), registry (npm version specs) and manual patch, which determines whether automatic updates are available; the `owner/repo` of GitHub sources and registry upstreams is validated client-side with the same rules and rendered as a link to `https://github.com/<owner>/<repo>` (opened in a new tab), falling back to plain text for invalid metadata (since v1.5.0);
 - **Update safety**: `check-update` performs semantic version comparison and confirms the installed commit; before `update`, the profile is validated for stale local packages referenced in dependencies (since v1.3.6) — the update is refused with a hint to fix the install source when a broken local package is found;
 - **Remove cleanup**: after a successful `remove`, the managed disable-state entries for that plugin's loader entries are cleaned up, keeping the profile patch file tidy.
 
