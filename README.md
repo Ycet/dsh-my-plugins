@@ -31,9 +31,11 @@ DeepSeek Harness（DSH）插件管理面板：在「设置 → 插件」页新�
 
 ## 📸 界面预览
 
-「设置 → 插件 → 我的插件」页：插件卡片列表（含版本、安装来源、配置与 Cordis 状态），my-plugins 卡片已展开显示启停 / 更新 / 移除操作。
+「设置 → 插件 → 我的插件」页（v1.4.0）：搜索框右侧新增「安装插件」按钮，弹窗支持 GitHub / link / file / npm 四种安装方式；插件卡片列表含版本、安装来源、配置与 Cordis 状态。
 
-![「我的插件」页界面截图](assets/images/dsh-my-plugins-setting-UI.png)
+![「我的插件」页界面截图 1](assets/images/dsh-my-plugins-setting-UI-1.png)
+
+![「我的插件」页界面截图 2](assets/images/dsh-my-plugins-setting-UI-2.png)
 
 ---
 

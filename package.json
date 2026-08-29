@@ -1,6 +1,6 @@
 {
   "name": "dsh-my-plugins",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "DSH 设置-插件页新增「我的插件」标签：一键安装（GitHub/Link/File/npm）、版本展示、启停、GitHub 更新检查与二次确认移除。",
   "type": "module",
   "main": "lib/index.js",
