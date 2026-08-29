@@ -45,6 +45,7 @@ The "My Plugins" page (Settings → Plugins, v1.4.0): an "Install plugin" button
 |---------|-------------|
 | **"My Plugins" tab** | Adds a dedicated tab (`mine`) to the Settings → Plugins page listing all user-installed plugins |
 | **One-click install** | An "Install plugin" button next to the search box opens a dialog with four methods: GitHub remote install, local link install, local file install and npm install (since v1.4.0); installing a package that is already present asks for confirmation before switching the install source |
+| **Bulk update check** | A "Check updates" button next to the search box checks every installed plugin for available updates in one click (local installs and manual patches are skipped, since v1.6.0); plugins with updates get a yellow "Update pending" status tag, cleared after clicking "Update now" on the card |
 | **Plugin cards** | One card per plugin: name, version, description and install source (GitHub / local / registry / manual patch); GitHub install sources and the GitHub upstream on registry cards render as clickable links that open the repository in a new tab (since v1.5.0) |
 | **Status display** | Configuration status (enabled/disabled) and Cordis mount phase (not mounted / waiting for dependencies / loading / mounted / mount failed / unloading) |
 | **Search** | Real-time filtering by plugin name or description |
@@ -89,10 +90,11 @@ The package declares a `dsh.bundle` patch layer; `dsh plugin` merges the loader 
 
 1. Open "Settings → Plugins → My Plugins";
 2. **Install**: click "Install plugin" next to the search box, pick a method in the dialog, enter the address/path/package name and click "Install". GitHub takes `owner/repo` (optional `#branch or tag`), link/file take an absolute local path (link reads the package name from the source `package.json` automatically), npm takes a package name (optional `@version`). Installing a plugin that already exists prompts for confirmation before switching sources. Restart `dsh web` after the install completes;
-3. **Search**: filter plugins by name or description in the input at the top;
-4. **Enable/disable**: click "Disable plugin" / "Enable plugin" on a card, then restart `dsh web` as prompted;
-5. **Update** (GitHub source): click "Check update" to see whether the upstream has a newer version; when available, click "Update now", then restart `dsh web` to apply;
-6. **Remove**: click "Remove plugin", confirm in the dialog, and restart `dsh web` to finish the uninstall.
+3. **Bulk check**: click "Check updates" next to the search box to check all installed plugins at once; plugins with available updates show a yellow "Update pending" status tag — expand the card and click "Update now" to upgrade them one by one;
+4. **Search**: filter plugins by name or description in the input at the top;
+5. **Enable/disable**: click "Disable plugin" / "Enable plugin" on a card, then restart `dsh web` as prompted;
+6. **Update** (GitHub source): click "Check update" to see whether the upstream has a newer version; when available, click "Update now", then restart `dsh web` to apply;
+7. **Remove**: click "Remove plugin", confirm in the dialog, and restart `dsh web` to finish the uninstall.
 
 > [!NOTE]
 > Installs, updates and removals are executed through the official `dsh plugin` CLI; completion is shown in a toast at the bottom right of the page, after which you need to restart `dsh web` in the terminal for the change to fully take effect.
@@ -106,6 +108,7 @@ A dual-half plugin (host + browser). The host registers a `/my-plugins/api` pref
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `POST` | `/my-plugins/api/list` | Return all plugin cards (version, source, config status, Cordis mount phase, available actions) |
+| `POST` | `/my-plugins/api/check-all` | Bulk-check every auto-updatable plugin for available updates (local installs and manual patches are skipped, since v1.6.0) |
 | `POST` | `/my-plugins/api/install` | Install a plugin (`kind` is github/link/file/npm, `input` is the address/path/package name; when a package with the same name is already installed it first returns `needConfirm`, then executes after confirmation) |
 | `POST` | `/my-plugins/api/toggle` | Disable/enable a plugin (writes the managed state block in the profile's `cordis.patch.yml`) |
 | `POST` | `/my-plugins/api/check-update` | Check GitHub upstream releases and compare versions |

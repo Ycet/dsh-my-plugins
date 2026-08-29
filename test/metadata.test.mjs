@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { assertUpdateApplied, buildCards, compareVersions, existingDependency, githubRepoOf, localSpecPath, missingLocalDependency, packageRootOf, readManagedStates, resolveInstallSpec, scanPatchInsertIds, sourceOf, splitNpmInput, summarizeCliError, updateArgsFor, writeManagedStates } from "../lib/index.js";
+import { assertUpdateApplied, buildCards, checkAllUpdates, compareVersions, existingDependency, githubRepoOf, localSpecPath, missingLocalDependency, packageRootOf, readManagedStates, resolveInstallSpec, scanPatchInsertIds, sourceOf, splitNpmInput, summarizeCliError, updateArgsFor, writeManagedStates } from "../lib/index.js";
 
 function makePackage(dir, name, version, description = "") {
 	mkdirSync(dir, { recursive: true });
@@ -135,6 +135,22 @@ test("summarizeCliError strips ANSI and trims pnpm noise", () => {
 	assert.ok(!summary.includes("\u001b"), "ANSI 序列应被剥离");
 	assert.ok(summary.includes("ERR_PNPM_ADD_PACKAGE_FAILED"));
 	assert.equal(summarizeCliError(""), "安装命令执行失败");
+});
+
+test("checkAllUpdates checks only auto-updatable sources and tolerates failures", async () => {
+	const cards = [
+		{ packageName: "dsh-github", source: { kind: "github", owner: "a", repo: "b" } },
+		{ packageName: "dsh-registry", source: { kind: "registry" } },
+		{ packageName: "dsh-local", source: { kind: "local" } },
+		{ packageName: "dsh-patch", source: { kind: "patch" } }
+	];
+	const checker = async (card) => card.packageName === "dsh-github" ? { state: "updateAvailable", message: "update!" } : card.packageName === "dsh-registry" ? { state: "latest", message: "ok" } : null;
+	const results = await checkAllUpdates(cards, checker);
+	assert.deepEqual(results.map((item) => item.packageName), ["dsh-github", "dsh-registry"]);
+	assert.equal(results[0].check.state, "updateAvailable");
+	const failing = await checkAllUpdates([{ packageName: "dsh-x", source: { kind: "github" } }], async () => { throw new Error("rate limited"); });
+	assert.equal(failing[0].check.state, "failed");
+	assert.match(failing[0].check.message, /rate limited/);
 });
 
 test("buildCards excludes in-box/subpath/include entries and retains local installed package", async () => {
