@@ -3,7 +3,8 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { assertUpdateApplied, buildCards, checkAllUpdates, compareVersions, existingDependency, githubRepoOf, localSpecPath, missingLocalDependency, packageRootOf, readManagedStates, resolveInstallSpec, scanPatchInsertIds, sourceOf, splitNpmInput, summarizeCliError, updateArgsFor, writeManagedStates } from "../lib/index.js";
+import { pathToFileURL } from "node:url";
+import { assertUpdateApplied, buildCards, checkAllUpdates, compareVersions, existingDependency, githubRepoOf, localSpecPath, missingLocalDependency, packageRootOf, profileDirFromLoader, readManagedStates, resolveInstallSpec, scanPatchInsertIds, sourceOf, splitNpmInput, summarizeCliError, updateArgsFor, writeManagedStates } from "../lib/index.js";
 
 function makePackage(dir, name, version, description = "") {
 	mkdirSync(dir, { recursive: true });
@@ -180,4 +181,58 @@ test("buildCards excludes in-box/subpath/include entries and retains local insta
 	assert.deepEqual(local.entryIds, ["local"]);
 	assert.equal(registry.source.kind, "registry");
 	assert.equal(registry.management.canCheckUpdate, true);
+});
+
+test("buildCards uses the profile selected by the loader root include", () => {
+	const home = mkdtempSync(join(tmpdir(), "dsh-my-plugins-profile-"));
+	const aaa = join(home, "profiles", "aaa");
+	const web = join(home, "profiles", "web");
+	for (const [profile, version] of [[aaa, "1.0.0"], [web, "2.0.0"]]) {
+		makePackage(join(profile, "node_modules", "dsh-shared"), "dsh-shared", version);
+		writeFileSync(join(profile, "package.json"), JSON.stringify({ dependencies: { "dsh-shared": "^1.0.0" } }), "utf8");
+		writeFileSync(join(profile, "cordis.patch.yml"), "[]\n", "utf8");
+	}
+	const loader = {
+		resolve(id) {
+			assert.equal(id, "include");
+			return { options: { config: { path: pathToFileURL(join(web, "cordis.yml")).href } } };
+		},
+		*entries() {
+			yield { id: "include", options: { name: "cordis:include" }, disabled: false, fiber: undefined };
+			yield { id: "include:shared", options: { name: "dsh-shared", id: "shared" }, disabled: false, fiber: { state: 2 } };
+		}
+	};
+
+	const result = buildCards(loader, home);
+	assert.equal(result.profile.name, "web");
+	assert.equal(result.profile.dir, web);
+	assert.equal(result.cards[0].version, "2.0.0");
+});
+
+test("profileDirFromLoader accepts only a valid file URL", () => {
+	const profile = join(tmpdir(), "dsh-profile-web");
+	assert.equal(profileDirFromLoader({ resolve: () => ({ options: { config: { path: pathToFileURL(join(profile, "cordis.yml")).href } } }) }), profile);
+	assert.equal(profileDirFromLoader({ resolve: () => ({ options: { config: { path: "https://example.com/cordis.yml" } } }) }), null);
+	assert.equal(profileDirFromLoader({ resolve: () => { throw new Error("missing include"); } }), null);
+	assert.equal(profileDirFromLoader(null), null);
+});
+
+test("buildCards refuses an ambiguous dependency-scan fallback", () => {
+	const home = mkdtempSync(join(tmpdir(), "dsh-my-plugins-ambiguous-"));
+	for (const name of ["aaa", "web"]) {
+		const profile = join(home, "profiles", name);
+		makePackage(join(profile, "node_modules", "dsh-shared"), "dsh-shared", "1.0.0");
+		writeFileSync(join(profile, "package.json"), JSON.stringify({ dependencies: { "dsh-shared": "^1.0.0" } }), "utf8");
+		writeFileSync(join(profile, "cordis.patch.yml"), "[]\n", "utf8");
+	}
+	const loader = {
+		*entries() {
+			yield { id: "include:shared", options: { name: "dsh-shared", id: "shared" }, disabled: false, fiber: { state: 2 } };
+		}
+	};
+
+	assert.throws(
+		() => buildCards(loader, home),
+		(error) => error?.status === 503 && /无法确定当前 DSH profile/.test(error.message)
+	);
 });
