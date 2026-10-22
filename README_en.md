@@ -1,5 +1,8 @@
 # dsh-my-plugins
 
+> [!WARNING]
+> **This plugin is no longer updated or maintained.** No new features, compatibility updates for newer DeepSeek Harness releases, or issue fixes will be provided; the existing code is kept for archival reference only and may not work with current versions. Use at your own risk.
+
 [![简体中文](https://img.shields.io/badge/简体中文-red?style=for-the-badge)](README.md)
 [![English](https://img.shields.io/badge/English-blue?style=for-the-badge)](README_en.md)
 

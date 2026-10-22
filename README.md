@@ -1,5 +1,8 @@
 # dsh-my-plugins
 
+> [!WARNING]
+> **该插件已停止更新与维护。** 本仓库不再新增功能、不再适配新版 DeepSeek Harness，也不再处理问题反馈；现有代码仅作存档参考，可能无法在当前版本中正常工作，请谨慎使用。
+
 [![简体中文](https://img.shields.io/badge/简体中文-red?style=for-the-badge)](README.md)
 [![English](https://img.shields.io/badge/English-blue?style=for-the-badge)](README_en.md)
 
